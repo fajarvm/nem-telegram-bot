@@ -1,60 +1,60 @@
 const Config = require('./config/apiconfig');
 const Constants = require('./config/appconstants');
-const ChatConstants = require('./config/chatconstants');
+// const ChatConstants = require('./config/chatconstants');
 const currency = require('currency-formatter');
-var fs = require('fs');
+let fs = require('fs');
 
 // Telegram
-const TelegramBot = require('node-telegram-bot-api');
-const teleBot = new TelegramBot(Config.TELEGRAM_BOT_API_TOKEN, {polling: true});
+const Telegraf = require('telegraf');
+const teleBot = new Telegraf(Config.TELEGRAM_BOT_API_TOKEN);
 
 // Caching
-var cacheObj = {
+let cacheObj = {
     request_time_ms: 0,
-    expire_time_ms: 0,
+    expiry_time_ms: 0,
     data: null
 };
 
 // Local variables
-const isLoggingEnabled = true;
-const isFeelingFunny = false;
+let isLoggingEnabled = true;
+let isFeelingFunny = false;
 const usFormat = {precision: 0, thousand: ',', decimal: '.', format: '%v'};
 
 _log("NEMbot has started.");
+teleBot.startPolling();
 
-teleBot.on("text", function (message) {
+teleBot.on("text", function (context) {
     // Note: message.date is UNIX time in SECONDS (JavaScript/ECMA Script Date.now() works with milliseconds)
     // Ignore request older than CHAT_TIMEOUT_SECONDS into the past
     const nowInSeconds = Math.floor(Date.now() / 1000);
-    if ((nowInSeconds - message.date) > Constants.CHAT_REQUEST_TIMEOUT_S) {
+    if ((nowInSeconds - context.message.date) > Constants.CHAT_REQUEST_TIMEOUT_S) {
         _log("Ignored. Chat message timestamp is older than " + Constants.CHAT_REQUEST_TIMEOUT_S + " seconds ago ");
         // no-op
         return;
     }
 
-    const chatId = message.chat.id;
-    if (message.text.toLowerCase().indexOf("/price") === 0) {
-        requestData(sendPriceData, chatId);
+    if (context.message.text.toLowerCase().indexOf("/price") === 0) {
+        requestData(sendPriceData, context);
     }
 
-    if (message.text.toLowerCase().indexOf("/stats") === 0) {
-        requestData(sendStatsData, chatId);
+    if (context.message.text.toLowerCase().indexOf("/stats") === 0) {
+        requestData(sendStatsData, context);
     }
 
-    if (message.text.toLowerCase().indexOf("/marketcap") === 0) {
-        requestData(sendMarketCapData, chatId);
+    if (context.message.text.toLowerCase().indexOf("/marketcap") === 0) {
+        requestData(sendMarketCapData, context);
     }
 });
 
-function requestData(callback, chatId) {
+function requestData(callback, context) {
     if (isCacheEmptyOrExpired()) {
-        readCacheFile(callback, chatId);
+        readCacheFile(callback, context);
     } else {
-        callback(chatId);
+        callback(context);
     }
 }
 
-function sendPriceData(chatId, attempt) {
+function sendPriceData(context, attempt) {
     if (attempt === undefined) {
         attempt = 1;
     }
@@ -65,13 +65,13 @@ function sendPriceData(chatId, attempt) {
             return;
         }
         attempt++;
-        setTimeout(sendPriceData, Constants.CHAT_REQUEST_RETRY_MS, chatId, attempt);
+        setTimeout(sendPriceData, Constants.CHAT_REQUEST_RETRY_MS, context, attempt);
     } else {
-        sendPriceDataToChat(chatId);
+        sendPriceDataToChat(context);
     }
 }
 
-function sendStatsData(chatId, attempt) {
+function sendStatsData(context, attempt) {
     if (attempt === undefined) {
         attempt = 1;
     }
@@ -82,13 +82,13 @@ function sendStatsData(chatId, attempt) {
             return;
         }
         attempt++;
-        setTimeout(sendStatsData, Constants.CHAT_REQUEST_RETRY_MS, chatId, attempt);
+        setTimeout(sendStatsData, Constants.CHAT_REQUEST_RETRY_MS, context, attempt);
     } else {
-        sendStatsDataToChat(chatId);
+        sendStatsDataToChat(context);
     }
 }
 
-function sendMarketCapData(chatId, attempt) {
+function sendMarketCapData(context, attempt) {
     if (attempt === undefined) {
         attempt = 1;
     }
@@ -99,43 +99,43 @@ function sendMarketCapData(chatId, attempt) {
             return;
         }
         attempt++;
-        setTimeout(sendMarketCapData, Constants.CHAT_REQUEST_RETRY_MS, chatId, attempt);
+        setTimeout(sendMarketCapData, Constants.CHAT_REQUEST_RETRY_MS, context, attempt);
     } else {
-        sendMarketCapDataToChat(chatId);
+        sendMarketCapDataToChat(context);
     }
 }
 
-function sendPriceDataToChat(chatId) {
-    const msg = getPriceWithRandomMessage(chatId);
-
-    sendMessage(chatId, msg);
+function sendPriceDataToChat(context) {
+    const msg = getPriceWithRandomMessage();
+    sendMessage(context, msg);
 }
 
-function sendStatsDataToChat(chatId) {
-    const h1 = parseFloat(cacheObj.data.percent_change_1h);
-    const h24 = parseFloat(cacheObj.data.percent_change_24h);
-    const d7 = parseFloat(cacheObj.data.percent_change_7d);
-    const volEur = parseFloat(cacheObj.data["24h_volume_eur"]);
-    const volUsd = parseFloat(cacheObj.data["24h_volume_usd"]);
+function sendStatsDataToChat(context) {
+    const h1 = parseFloat(cacheObj.data.price_change_percentage_1h_in_currency.usd).toFixed(2); // there's no price_change_percentage_1h
+    const h24 = parseFloat(cacheObj.data.price_change_percentage_24h).toFixed(2);
+    const d7 = parseFloat(cacheObj.data.price_change_percentage_7d).toFixed(2);
+    const ath = parseFloat(cacheObj.data.ath_change_percentage.usd).toFixed(2);
+    const volUsd = parseFloat(cacheObj.data.total_volume.usd);
+    const volEur = parseFloat(cacheObj.data.total_volume.eur);
 
     const msg = "Price movements: " +
-        "\n1h" + getSignIcon(h1) + "" + h1 + "% | 24h" + getSignIcon(h24) + "" + h24 + "% | " + "7d" + getSignIcon(d7) + "" + d7 + "%" +
+        "\n1h" + getSignIcon(h1) + "" + h1 + "% | 24h" + getSignIcon(h24) + "" + h24 + "% | 7d" + getSignIcon(d7) + "" + d7 + "% | ATH" + getSignIcon(ath) + "" + ath + "%" +
         "\nVolume (24h): " +
         "\n" + Constants.ISO_SYMBOL_USD + currency.format(volUsd, usFormat) +
         " | " + Constants.ISO_SYMBOL_EUR + currency.format(volEur, usFormat);
 
-    sendMessage(chatId, msg);
+    sendMessage(context, msg);
 }
 
-function sendMarketCapDataToChat(chatId) {
-    const capUsd = parseFloat(cacheObj.data.market_cap_usd);
-    const capEur = parseFloat(cacheObj.data.market_cap_eur);
+function sendMarketCapDataToChat(context) {
+    const capUsd = parseFloat(cacheObj.data.market_cap.usd);
+    const capEur = parseFloat(cacheObj.data.market_cap.eur);
 
     const msg = "Market Cap: " +
         "\n" + Constants.ISO_SYMBOL_USD + currency.format(capUsd, usFormat) +
         " | " + Constants.ISO_SYMBOL_EUR + currency.format(capEur, usFormat);
 
-    sendMessage(chatId, msg);
+    sendMessage(context, msg);
 }
 
 function getSignIcon(floatNumber) {
@@ -152,14 +152,14 @@ function isCacheEmptyOrExpired() {
         return true;
     }
 
-    if (isNullOrUndefined(cacheObj.expire_time_ms)) {
+    if (isNullOrUndefined(cacheObj.expiry_time_ms)) {
         _log("Data cache expiration time is null or undefined.");
         return true;
     }
 
-    var diff = Date.now() - cacheObj.expire_time_ms;
+    var diff = Date.now() - cacheObj.expiry_time_ms;
     if (diff > 0) {
-        _log("Data cache has expired. Expiration time was: " + cacheObj.expire_time_ms);
+        _log("Data cache has expired. Expiration time was: " + cacheObj.expiry_time_ms);
         return true;
     }
 
@@ -167,7 +167,7 @@ function isCacheEmptyOrExpired() {
 }
 
 function readCacheFile(callback, param1) {
-    fs.readFile(Constants.CACHE_FILE_PATH, Constants.UTF8, function (error, data) {
+    fs.readFile(Constants.CACHE_FILE_PATH, Constants.ENCODING_UTF8, function (error, data) {
         if (error) {
             catchFileIOErrors(error);
         } else {
@@ -178,18 +178,18 @@ function readCacheFile(callback, param1) {
 }
 
 function getPrice(curr) {
-    var priceTag = "NaN";
+    let priceTag = "NaN";
     switch (curr) {
         case Constants.ISO_CODE_BTC:
-            var inSatoshi = parseFloat(cacheObj.data.price_btc) * 100000000;
+            let inSatoshi = parseFloat(cacheObj.data.current_price.btc) * 100000000;
             priceTag = inSatoshi.toFixed(0);
             break;
         case Constants.ISO_CODE_EUR:
-            var inEur = parseFloat(cacheObj.data.price_eur);
+            let inEur = parseFloat(cacheObj.data.current_price.eur);
             priceTag = inEur.toFixed(2);
             break;
         case Constants.ISO_CODE_USD:
-            var inUsd = parseFloat(cacheObj.data.price_usd);
+            let inUsd = parseFloat(cacheObj.data.current_price.usd);
             priceTag = inUsd.toFixed(2);
             break;
         default:
@@ -199,8 +199,9 @@ function getPrice(curr) {
     return priceTag;
 }
 
-function sendMessage(chatId, message) {
-    teleBot.sendMessage(chatId, message);
+function sendMessage(context, message) {
+    // context.telegram.sendMessage(context.message.chat.id, message);
+    context.reply(message);
 }
 
 function _log(msg) {
@@ -217,17 +218,20 @@ function catchFileIOErrors(error) {
     _log('Error while reading or writing a file. IO Error: ' + error);
 }
 
-function getPriceWithRandomMessage(chatId) {
+function getPriceWithRandomMessage() {
     const priceMsg = "1 XEM" +
         " = " + getPrice(Constants.ISO_CODE_BTC) + " sat" +
         " = " + Constants.ISO_SYMBOL_USD + getPrice(Constants.ISO_CODE_USD) +
         " = " + Constants.ISO_SYMBOL_EUR + getPrice(Constants.ISO_CODE_EUR);
 
-    var message = "";
+    return priceMsg;
+
+    // Fiddles
+    /*
+    let message = "";
     var inUsd = parseFloat(cacheObj.data.price_usd);
     inUsd = inUsd.toFixed(2);
 
-    
     // if (getRandomNumber(1, 5) < 3) {
     if (true) {
         message = priceMsg;
@@ -237,7 +241,7 @@ function getPriceWithRandomMessage(chatId) {
             message = contentLines[getRandomNumber(0, contentLines.length - 1)];
 
             if (message === ChatConstants.PRICE_LAMBO) {
-                var lamboPrice = inUsd / 330000;
+                let lamboPrice = inUsd / 330000;
                 message = " = " + lamboPrice.toFixed(8) + message;
             } else {
                 message = "\n" + message;
@@ -265,8 +269,11 @@ function getPriceWithRandomMessage(chatId) {
     }
 
     return message;
+    */
 }
 
+// Fiddles
+/*
 function getRandomNumber(min, max) {
     return Math.floor(Math.random() * max) + min;
 }
@@ -302,3 +309,4 @@ const sadLines = [
     ChatConstants.PRICE_NATTED,
     ChatConstants.PRICE_FELLS_SAD
 ];
+*/
