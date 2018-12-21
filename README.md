@@ -1,30 +1,16 @@
 # nem-telegram-bot
 A Telegram chat bot that fetches and broadcasts the price of XEM
 
-## install
+## Installation
 ```
 npm install
 ```
 
-## usage
-1. Run the price data fetcher. It fetches the data regularly at a given time interval.
-```
-node datafetcher.js
-```
-
-2. And then run the telegram bot. It relays the price data to the requester (from the chat).
-```
-node nembot.js
-```
-
-Both processes should be kept running. For example, by using Node.js Process Manager (PM2):
+## Usage
+Run the `main.js` script as a background process. For example, by using Node.js Process Manager (PM2):
 ```
 npm install --global pm2
-```
-And then run both as background process
-```
-pm2 start datafetcher.js -i 0 --name "databot"
-pm2 start nembot.js -i 0 --name "nembot"
+pm2 start main.js --name "nembot"
 ```
 
 __Important notes:__  

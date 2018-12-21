@@ -1,12 +1,12 @@
 {
   "name": "nem-telegram-bot",
-  "version": "0.2.0",
+  "version": "0.2.5",
   "description": "A NodeJS price fetching and broadcasting Telegram bot for NEM",
   "private": true,
-  "main": "nembot.js",
+  "main": "main.js",
   "scripts": {
     "test": "test",
-    "start": "node nembot.js"
+    "start": "node main.js"
   },
   "repository": {
     "type": "git",
@@ -22,6 +22,7 @@
   "homepage": "https://github.com/fajarvm/nem-telegram-bot#readme",
   "dependencies": {
     "axios": "^0.18.0",
+    "coingecko-api": "^1.0.1",
     "currency-formatter": "^1.3.2",
     "telegraf": "^3.25.0"
   }
