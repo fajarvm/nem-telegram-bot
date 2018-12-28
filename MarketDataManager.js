@@ -124,7 +124,7 @@ class MarketDataManager {
                     context._handleErrorResponse(error);
                 })
                 .finally(()=>{
-                    this._isCommunicating = false;
+                    context._isCommunicating = false;
                     MarketDataManager._log('Communication with the endpoint is closed.');
                     }
                 );
