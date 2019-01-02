@@ -8,7 +8,7 @@ const MarketDataManager = require('./MarketDataManager');
 const NemTelegramBot = require('./NemTelegramBot');
 
 function main() {
-    const DataManager = new MarketDataManager();
+    const DataManager = new MarketDataManager(true);
     const NemBot = new NemTelegramBot(Config.TELEGRAM_BOT_API_TOKEN, DataManager);
 
     DataManager.start().then(

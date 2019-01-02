@@ -113,7 +113,7 @@ class NemTelegramBot {
             "\n" + volUsd + " | " + volEur;
 
         NemTelegramBot._sendMessage(context, message);
-        // TODO: also attach a picture of 7d sparkline price chart
+        NemTelegramBot._sendPicture(context, this._dataManager.sparklineImagePath);
     }
 
     _postMarketCap(context) {
@@ -137,8 +137,9 @@ class NemTelegramBot {
         context.reply(message);
     }
 
-    // TODO: send picture
-    // _sendPicture();
+    static _sendPicture(context, pathToPic) {
+        context.replyWithPhoto({source: pathToPic});
+    };
 
     static _log(msg) {
         void Utils.consoleLog('NemTelegramBot', msg);

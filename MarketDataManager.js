@@ -2,7 +2,12 @@
 
 // Modules
 const axios = require('axios');
+const fs = require('fs');
 const queryString = require('querystring');
+const window = require('svgdom');
+const document = window.document;
+const SVG = require('svg.js')(window);
+const svg2img = require('svg2img');
 
 // Application modules
 const Config = require('./configs/api_configs');
@@ -27,7 +32,7 @@ const CacheManager = require('./CacheManager');
 class MarketDataManager {
     constructor(includeSparkline = false) {
         // prepare caching
-        this._cacheManager = new CacheManager(Constants.CACHE_DIR, Constants.CACHE_FILENAME, Constants.CACHE_TIMEOUT_MS);
+        this._cacheManager = new CacheManager(Constants.DATA_DIR, Constants.CACHE_FILENAME, Constants.CACHE_TIMEOUT_MS);
 
         // Request options for the HTTP client
         this._httpClient = axios.create({baseURL: Config.CG_API_URL});
@@ -42,6 +47,9 @@ class MarketDataManager {
         };
         this._requestOptions = this._buildRequestOption(params);
         this._intervalObject = null;
+        this._sparklineImagePath = MarketDataManager.DEFAULT_SPARKLINE_PATH;
+        this._canvas = SVG(document.documentElement).size(Constants.SPARKLINE_IMAGE_WIDTH, Constants.SPARKLINE_IMAGE_HEIGHT);
+        this._chartObj = this._canvas.fill('none').stroke({color: 'orange', width: 2});
     }
 
     get marketDataObject() {
@@ -58,6 +66,10 @@ class MarketDataManager {
 
     get requestOptions() {
         return this._requestOptions;
+    }
+
+    get sparklineImagePath() {
+        return this._sparklineImagePath;
     }
 
     get instance() {
@@ -123,9 +135,9 @@ class MarketDataManager {
                 .catch((error) => {
                     context._handleErrorResponse(error);
                 })
-                .finally(()=>{
-                    context._isCommunicating = false;
-                    MarketDataManager._log('Communication with the endpoint is closed.');
+                .finally(() => {
+                        context._isCommunicating = false;
+                        MarketDataManager._log('Communication with the endpoint is closed.');
                     }
                 );
         }
@@ -166,6 +178,8 @@ class MarketDataManager {
                     (success) => {
                         this._marketDataObject = new FormattedMarketData(this.cacheManager.cacheObject.data);
                         MarketDataManager._log('cacheObject is updated successfully.');
+
+                        this._generateSparklineImage();
                     },
                     (error) => {
                         MarketDataManager._log('Failed updating cacheObject. Error: ' + error);
@@ -185,9 +199,56 @@ class MarketDataManager {
         }
     }
 
+    _generateSparklineImage() {
+        if (this._includeSparkline) {
+            // plot sparkline chart
+            let values = this._getSparklineValue(this._marketDataObject.getSparkline7dInUsd());
+            this._chartObj.polyline(values);
+
+            // save to an image file
+            try {
+                svg2img(this._canvas.svg(),
+                    {
+                        'width': Constants.SPARKLINE_IMAGE_WIDTH,
+                        'height': Constants.SPARKLINE_IMAGE_HEIGHT
+                    },
+                    (error, buffer) => {
+                        fs.writeFileSync(this._sparklineImagePath, buffer);
+                    });
+
+                MarketDataManager._log('Sparkline image is saved.');
+            } catch (error) {
+                MarketDataManager._log('Failed saving sparkline image. Error: ' + error);
+            }
+        }
+    }
+
+    // calculate raw data into 2D points on Canvas
+    _getSparklineValue(data) {
+        const min = Math.min(...data);
+        const max = Math.max(...data);
+
+        let values = '';
+        let unit = 100 / (max - min);
+        for (let i = 0; i < data.length; i++) {
+            const val = data[i];
+            let y = (Constants.SPARKLINE_IMAGE_HEIGHT - (((val - min) * unit) / 100) * Constants.SPARKLINE_IMAGE_HEIGHT);
+            // console.log("y=" + (((val - min) * unit) / 100));
+            values += i + ', ' + y;
+            if (i < (data.length - 1)) {
+                values += ' ';
+            }
+        }
+        return values;
+    }
+
     static _log(msg) {
         void Utils.consoleLog('MarketDataManager', msg);
     }
 }
+
+MarketDataManager.DEFAULT_SPARKLINE_DIR = './data';
+MarketDataManager.DEFAULT_SPARKLINE_FILENAME = 'sparkline.png';
+MarketDataManager.DEFAULT_SPARKLINE_PATH = MarketDataManager.DEFAULT_SPARKLINE_DIR + '/' + MarketDataManager.DEFAULT_SPARKLINE_FILENAME;
 
 module.exports = exports = MarketDataManager;
