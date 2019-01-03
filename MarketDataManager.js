@@ -199,26 +199,7 @@ class MarketDataManager {
 
     _generateSparklineImage() {
         if (this._includeSparkline) {
-            // plot sparkline chart
-            let values = this._getSparklineValue(this._marketDataObject.getSparkline7dInUsd());
-            let color = 'orange';
-            // Uncomment these lines to enable line color based on 7d performance
-            // let icon = FormattedMarketData.getSignIcon(this._marketDataObject.getPercentChange7dInUsd());
-            // if (FormattedMarketData.ICON_DOWN === icon) {
-            //     color = 'red';
-            // } else if (FormattedMarketData.ICON_UP === icon) {
-            //     color = 'green';
-            // }
-
-            // Create a new black canvas
-            let canvas = SVG(document.documentElement).size(
-                Constants.SPARKLINE_IMAGE_WIDTH,
-                Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET * 2)
-            );
-            canvas.backgroundColor = 'white';
-            let chart = canvas.fill('none').stroke({color: color, width: 2});
-            // plot the chart
-            chart.polyline(values);
+            let canvas = this._drawSparkline();
 
             // save to an image file
             try {
@@ -228,10 +209,6 @@ class MarketDataManager {
                         'height': canvas.height()
                     },
                     (error, buffer) => {
-                        if (fs.existsSync(this._sparklineImagePath)) {
-                            fs.unlinkSync(this._sparklineImagePath);
-                        }
-
                         fs.writeFileSync(this._sparklineImagePath, buffer);
                     });
 
@@ -263,6 +240,30 @@ class MarketDataManager {
             }
         }
         return values;
+    }
+
+    _drawSparkline() {
+        // plot sparkline chart
+        let values = this._getSparklineValue(this._marketDataObject.getSparkline7dInUsd());
+        let color = 'orange';
+        // Uncomment these lines to enable line color based on 7d performance
+        // let icon = FormattedMarketData.getSignIcon(this._marketDataObject.getPercentChange7dInUsd());
+        // if (FormattedMarketData.ICON_DOWN === icon) {
+        //     color = 'red';
+        // } else if (FormattedMarketData.ICON_UP === icon) {
+        //     color = 'green';
+        // }
+
+        let element = document.createElement('svg'); // new blank element
+        let canvas = SVG(element).size(
+            Constants.SPARKLINE_IMAGE_WIDTH,
+            Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET * 2)
+        );
+        canvas.backgroundColor = 'white';
+        let chart = canvas.fill('none').stroke({color: color, width: 2});
+        chart.polyline(values);
+
+        return canvas;
     }
 
     static _log(msg) {
