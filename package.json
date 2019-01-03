@@ -1,6 +1,6 @@
 {
   "name": "nem-telegram-bot",
-  "version": "0.2.8",
+  "version": "0.2.9",
   "description": "A NodeJS price fetching and broadcasting Telegram bot for NEM",
   "private": true,
   "main": "main.js",
