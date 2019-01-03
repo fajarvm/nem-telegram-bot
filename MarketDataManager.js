@@ -48,11 +48,6 @@ class MarketDataManager {
         this._requestOptions = this._buildRequestOption(params);
         this._intervalObject = null;
         this._sparklineImagePath = MarketDataManager.DEFAULT_SPARKLINE_PATH;
-        this._canvas = SVG(document.documentElement).size(
-            Constants.SPARKLINE_IMAGE_WIDTH,
-            Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET * 2)
-        );
-        this._canvas.backgroundColor = 'white';
     }
 
     get marketDataObject() {
@@ -207,6 +202,7 @@ class MarketDataManager {
             // plot sparkline chart
             let values = this._getSparklineValue(this._marketDataObject.getSparkline7dInUsd());
             let color = 'orange';
+            // Uncomment these lines to enable line color based on 7d performance
             // let icon = FormattedMarketData.getSignIcon(this._marketDataObject.getPercentChange7dInUsd());
             // if (FormattedMarketData.ICON_DOWN === icon) {
             //     color = 'red';
@@ -214,15 +210,22 @@ class MarketDataManager {
             //     color = 'green';
             // }
 
-            this._chartObj = this._canvas.fill('none').stroke({color: color, width: 2});
-            this._chartObj.polyline(values);
+            // Create a new black canvas
+            let canvas = SVG(document.documentElement).size(
+                Constants.SPARKLINE_IMAGE_WIDTH,
+                Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET * 2)
+            );
+            canvas.backgroundColor = 'white';
+            let chart = canvas.fill('none').stroke({color: color, width: 2});
+            // plot the chart
+            chart.polyline(values);
 
             // save to an image file
             try {
-                svg2img(this._canvas.svg(),
+                svg2img(canvas.svg(),
                     {
-                        'width': this._canvas.width(),
-                        'height': this._canvas.height()
+                        'width': canvas.width(),
+                        'height': canvas.height()
                     },
                     (error, buffer) => {
                         fs.writeFileSync(this._sparklineImagePath, buffer);
