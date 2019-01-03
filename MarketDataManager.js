@@ -228,6 +228,10 @@ class MarketDataManager {
                         'height': canvas.height()
                     },
                     (error, buffer) => {
+                        if (fs.existsSync(this._sparklineImagePath)) {
+                            fs.unlinkSync(this._sparklineImagePath);
+                        }
+
                         fs.writeFileSync(this._sparklineImagePath, buffer);
                     });
 
