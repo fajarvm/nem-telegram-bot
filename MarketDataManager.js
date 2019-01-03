@@ -48,8 +48,11 @@ class MarketDataManager {
         this._requestOptions = this._buildRequestOption(params);
         this._intervalObject = null;
         this._sparklineImagePath = MarketDataManager.DEFAULT_SPARKLINE_PATH;
-        this._canvas = SVG(document.documentElement).size(Constants.SPARKLINE_IMAGE_WIDTH, Constants.SPARKLINE_IMAGE_HEIGHT);
-        this._chartObj = this._canvas.fill('none').stroke({color: 'orange', width: 2});
+        this._canvas = SVG(document.documentElement).size(
+            Constants.SPARKLINE_IMAGE_WIDTH,
+            Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET * 2)
+        );
+        this._canvas.backgroundColor = 'white';
     }
 
     get marketDataObject() {
@@ -203,14 +206,23 @@ class MarketDataManager {
         if (this._includeSparkline) {
             // plot sparkline chart
             let values = this._getSparklineValue(this._marketDataObject.getSparkline7dInUsd());
+            let color = 'orange';
+            // let icon = FormattedMarketData.getSignIcon(this._marketDataObject.getPercentChange7dInUsd());
+            // if (FormattedMarketData.ICON_DOWN === icon) {
+            //     color = 'red';
+            // } else if (FormattedMarketData.ICON_UP === icon) {
+            //     color = 'green';
+            // }
+
+            this._chartObj = this._canvas.fill('none').stroke({color: color, width: 2});
             this._chartObj.polyline(values);
 
             // save to an image file
             try {
                 svg2img(this._canvas.svg(),
                     {
-                        'width': Constants.SPARKLINE_IMAGE_WIDTH,
-                        'height': Constants.SPARKLINE_IMAGE_HEIGHT
+                        'width': this._canvas.width(),
+                        'height': this._canvas.height()
                     },
                     (error, buffer) => {
                         fs.writeFileSync(this._sparklineImagePath, buffer);
@@ -232,9 +244,13 @@ class MarketDataManager {
         let unit = 100 / (max - min);
         for (let i = 0; i < data.length; i++) {
             const val = data[i];
-            let y = (Constants.SPARKLINE_IMAGE_HEIGHT - (((val - min) * unit) / 100) * Constants.SPARKLINE_IMAGE_HEIGHT);
+            let y = (
+                Constants.SPARKLINE_IMAGE_HEIGHT + (Constants.SPARKLINE_OFFSET / 2)
+                - (((val - min) * unit) / 100)
+                * (Constants.SPARKLINE_IMAGE_HEIGHT - (Constants.SPARKLINE_OFFSET / 2))
+            );
             // console.log("y=" + (((val - min) * unit) / 100));
-            values += i + ', ' + y;
+            values += (i + (Constants.SPARKLINE_OFFSET / 2)) + ', ' + y;
             if (i < (data.length - 1)) {
                 values += ' ';
             }

@@ -9,8 +9,9 @@ const CACHE_TIMEOUT_MS = 60 * 1000;  // 1 minute
 const CACHE_UPDATE_INTERVAL_MS = 60 * 1000; // 1 minute
 const DATA_DIR = './data';
 const CACHE_FILENAME = 'cacheObject.json';
-const SPARKLINE_IMAGE_WIDTH = 200; // in pixels
-const SPARKLINE_IMAGE_HEIGHT = 50; // in pixels
+const SPARKLINE_IMAGE_WIDTH = 180; // in pixels
+const SPARKLINE_IMAGE_HEIGHT = 60; // in pixels
+const SPARKLINE_OFFSET = 5; // in pixels
 
 // Chat related
 const CHAT_REQUEST_TIMEOUT_S = 10;
@@ -29,5 +30,6 @@ module.exports = {
     DATABASE_UPDATE_INTERVAL_MS,
     ENCODING_UTF8,
     SPARKLINE_IMAGE_WIDTH,
-    SPARKLINE_IMAGE_HEIGHT
+    SPARKLINE_IMAGE_HEIGHT,
+    SPARKLINE_OFFSET
 };
